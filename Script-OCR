@@ -1,0 +1,145 @@
+# import pytesseract
+# from pdf2image import convert_from_path
+# import re
+# import os
+
+# # Configuración de rutas
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# pdf_path = r"C:/Users/auxiliar.contable/Desktop/DEMO PYTHON OCR/ilovepdf_merged.pdf"
+# poppler_path = r"C:\Archivos de programa\poppler-24.08.0\Library\bin"
+# directorio_destino = r"C:/Users/auxiliar.contable/Desktop/DEMO PYTHON OCR"
+
+# # Crear el directorio si no existe
+# os.makedirs(directorio_destino, exist_ok=True)
+
+# def extraer_texto_de_imagen(img):
+#     """Extrae el texto de una imagen usando Tesseract."""
+#     try:
+#         return pytesseract.image_to_string(img)
+#     except Exception as e:
+#         print(f"Error al extraer texto de la imagen: {e}")
+#         return ""
+
+# def limpiar_texto(text):
+#     """Limpia el texto eliminando caracteres no permitidos en nombres de archivo."""
+#     return re.sub(r'[^\w\s]', '', text).replace('\n', '').strip()
+
+# def obtener_datos_comprobante(text):
+#     """Extrae el número de comprobante y el nombre del propietario del texto."""
+#     comprobante_num = "Comprobante_No_Desconocido"
+#     propietario_name = "Propietario_Desconocido"
+
+#     # Expresión regular para buscar el número de comprobante
+#     comprobante_match = re.search(r'No\s*(\d+)', text)  # Busca "No" seguido de un número
+#     if comprobante_match:
+#         comprobante_num = limpiar_texto(comprobante_match.group(1))
+
+#     # Buscar el nombre del propietario en el resto del texto
+#     propietario_match = re.search(r'Propietario:\s+([A-Za-z\s]+)', text)
+#     if propietario_match:
+#         propietario_name = limpiar_texto(propietario_match.group(1))
+
+#     return comprobante_num, propietario_name
+
+# def guardar_imagen_con_nombre(nuevo_nombre, img, formato='png'):
+#     """Guarda la imagen con el nuevo nombre en el formato especificado."""
+#     try:
+#         img.save(f"{nuevo_nombre}.{formato}", format=formato.upper())
+#         print(f"Imagen guardada con el nombre: {nuevo_nombre}.{formato}")
+#     except Exception as e:
+#         print(f"Error al guardar la imagen: {e}")
+
+# def main():
+#     # Convertir PDF a imágenes con la ruta de Poppler y resolución de 300 DPI para mayor calidad de OCR
+#     paginas = convert_from_path(pdf_path, poppler_path=poppler_path, dpi=300)
+
+#     for i, img in enumerate(paginas):
+#         # Extraer texto de la imagen completa
+#         texto = extraer_texto_de_imagen(img)
+#         if not texto:
+#             print(f"No se pudo extraer texto de la página {i+1}")
+#             continue
+
+#         # Obtener datos del comprobante
+#         comprobante_num, propietario_name = obtener_datos_comprobante(texto)
+
+#         # Crear el nombre del archivo en el formato "Número del comprobante + Nombre del propietario"
+#         nuevo_nombre = os.path.join(directorio_destino, f"{comprobante_num}_{propietario_name.replace(' ', '_')}")
+#         print(f"Nombre generado: {nuevo_nombre}")
+
+#         # Guardar la imagen en formato PNG
+#         guardar_imagen_con_nombre(nuevo_nombre, img, formato='png')
+
+# if __name__ == "__main__":
+#     main()
+import pytesseract
+from pdf2image import convert_from_path
+import re
+import os
+
+# Configuración de rutas
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+pdf_path = r"C:/Users/auxiliar.contable/Desktop/DEMO PYTHON OCR/ilovepdf_merged.pdf"
+poppler_path = r"C:\Archivos de programa\poppler-24.08.0\Library\bin"
+directorio_destino = r"C:/Users/auxiliar.contable/Desktop/DEMO PYTHON OCR"
+
+# Crear el directorio si no existe
+os.makedirs(directorio_destino, exist_ok=True)
+
+def extraer_texto_de_imagen(img):
+    """Extrae el texto de una imagen usando Tesseract."""
+    try:
+        return pytesseract.image_to_string(img, lang='spa')
+    except Exception as e:
+        print(f"Error al extraer texto de la imagen: {e}")
+        return ""
+
+def limpiar_texto(text):
+    """Limpia el texto eliminando caracteres no permitidos en nombres de archivo."""
+    return re.sub(r'[^\w\s]', '', text).replace('\n', '').strip()
+
+def obtener_datos_comprobantes(text):
+    """Extrae los datos de todos los comprobantes del texto."""
+    comprobantes = []
+    # Expresión regular para buscar el número de comprobante y el nombre del propietario
+    patrones = re.findall(r'No\s*(\d+).*?Propietario:\s*([A-Za-z\s]+)', text, re.DOTALL)
+    
+    for match in patrones:
+        comprobante_num = limpiar_texto(match[0])
+        propietario_name = limpiar_texto(match[1])
+        comprobantes.append((comprobante_num, propietario_name))
+    
+    return comprobantes
+
+def guardar_imagen_con_nombre(nuevo_nombre, img, formato='png'):
+    """Guarda la imagen con el nuevo nombre en el formato especificado."""
+    try:
+        img.save(f"{nuevo_nombre}.{formato}", format=formato.upper())
+        print(f"Imagen guardada con el nombre: {nuevo_nombre}.{formato}")
+    except Exception as e:
+        print(f"Error al guardar la imagen: {e}")
+
+def main():
+    # Convertir PDF a imágenes con la ruta de Poppler y resolución de 300 DPI para mayor calidad de OCR
+    paginas = convert_from_path(pdf_path, poppler_path=poppler_path, dpi=300)
+
+    for i, img in enumerate(paginas):
+        # Extraer texto de la imagen completa
+        texto = extraer_texto_de_imagen(img)
+        if not texto:
+            print(f"No se pudo extraer texto de la página {i+1}")
+            continue
+
+        # Obtener datos de los comprobantes
+        comprobantes = obtener_datos_comprobantes(texto)
+
+        for comprobante_num, propietario_name in comprobantes:
+            # Crear el nombre del archivo en el formato "Número del comprobante + Nombre del propietario"
+            nuevo_nombre = os.path.join(directorio_destino, f"{comprobante_num}_{propietario_name.replace(' ', '_')}")
+            print(f"Nombre generado: {nuevo_nombre}")
+
+            # Guardar la imagen en formato PNG
+            guardar_imagen_con_nombre(nuevo_nombre, img, formato='png')
+
+if __name__ == "__main__":
+    main()
